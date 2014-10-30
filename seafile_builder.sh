@@ -4,11 +4,18 @@
 # This software is distributed under the terms of the GNU GPL version 3.
 
 name="SFBuilder"
-version=0.0.0
+version=0.0.1
 author="Paul Steinlechner"
 license="GPLv3"
+
 make_stack=('libsearpc' 'ccnet' 'seafile' 'seafile-client')
 make_amount=${#make_stack[@]}
+
+tmpdir="/tmp/seafile_git_latest_build"
+temp_python_path="$tmpdir/temp_python"
+temp_python_state=false
+
+
 
 function check_priveleges(){
 if [[ $EUID -ne 0 ]]; then
@@ -30,11 +37,9 @@ printf "\v\n\e[33m %s" "==> Preparing build environment. "
 check_priveleges
 install_packages
 
-tmpdir="/tmp/seafile_git_latest_build"
-
 if [ -d $tmpdir ]
 then
-    rm -rf $tmpdir/*
+    sudo rm -rf $tmpdir/*
     if [ $? != 0 ]
     then
         issue_exit "cleaning up"
@@ -60,6 +65,10 @@ case $os in
     Fedora) printf "\v\n\t\e[33m%s" "==> You are using Fedora"
         package_stack="vala vala-compat wget gcc libevent-devel openssl-devel gtk2-devel libuuid-devel sqlite-devel jansson-devel intltool cmake qt-devel fuse-devel"
         package_manager="yum install -y";;
+    Arch) printf "\v\n\t\e[33m%s" "==> You are using Archlinux"  
+        package_stack="cmake qt4 qtwebkit fuse gtk-update-icon-cache hicolor-icon-theme intltool vala"
+        package_manager="pacman -S --noconfirm"
+        ;;
     *) echo "Sorry $os is not supported"
         printf "\v\n\t\e[31m%10s" "==> Your OS is not supported: $os"
         issue_exit "installing needed devel packages $package_stack"
@@ -100,6 +109,9 @@ export PREFIX=/usr
 export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:$PKG_CONFIG_PATH"
 export PATH="$PREFIX/bin:$PATH"
 
+virtualenv -p /usr/bin/python2.7 $temp_python_path 2>&1>/dev/null
+source $temp_python_path/bin/activate
+temp_python_state=true
 
 build_counter=1
 
@@ -150,6 +162,19 @@ do
     cd ..
     build_counter=$(($build_counter + 1))
 done
+
+printf "\n\n\t\e[32m%s\n\e[39m" "==> Refreshing Icon Cache"
+sudo gtk-update-icon-cache -q -t -f /usr/share/icons/hicolor 
+
+printf "\n\n\t\e[32m%s\n\e[39m" "==> Installing licence [not implemented yet]"
+#install -D -m644 
+
+# deactivate temp python state
+if [ temp_python_state == true ];then
+    deactivate
+fi
+
+
 printf "\n\n\t\e[32m%s\n\e[39m" "==> Building and installing finished"
 }
 
